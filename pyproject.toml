@@ -1,6 +1,6 @@
 [project]
 name = "better-buyer"
-version = "1.0.0"
+version = "1.1.0"
 description = "品类可插拔、多模型协同决策的优惠券采集、盯盘预测与半自动购买系统"
 readme = "README.md"
 requires-python = ">=3.11"

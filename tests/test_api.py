@@ -36,17 +36,9 @@ def test_api_health_auth_chat_and_pairing(container):
     )
     assert reply.status_code == 200
     payload = reply.json()
-    assert payload["state"] == "Ready"
-    assert payload["booking_id"]
-
-    started = client.post(
-        f"/api/chat/sessions/{session_id}/messages",
-        headers=headers,
-        json={"text": "1"},
-    )
-    assert started.status_code == 200
-    payload = started.json()
+    # 条件齐全后直接启动后台盯盘
     assert payload["state"] == "Watching"
+    assert payload["booking_id"]
     assert payload["offers"]
 
     bookings = client.get("/api/bookings", headers=headers)

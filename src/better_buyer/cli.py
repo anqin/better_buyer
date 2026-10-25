@@ -240,11 +240,25 @@ def cmd_health(args: argparse.Namespace, container: AppContainer) -> int:
     return 0
 
 
+def _builtin_command_names() -> list[str]:
+    """从参数解析器读取全部内置 CLI 命令，避免手工维护造成数量漂移。"""
+    for action in build_parser()._actions:
+        choices = getattr(action, "choices", None)
+        if action.dest == "command" and isinstance(choices, dict):
+            return list(choices)
+    return []
+
+
 def cmd_status(args: argparse.Namespace, container: AppContainer) -> int:
+    watches = [dict(item) for item in container.repos.watches.list_running()]
+    builtin_commands = _builtin_command_names()
     _dump(
         {
             "bookings": len(container.repos.bookings.list(limit=500)),
-            "running_watches": [dict(item) for item in container.repos.watches.list_running()],
+            "watch_task_count": len(watches),
+            "running_watches": watches,
+            "builtin_command_count": len(builtin_commands),
+            "builtin_commands": builtin_commands,
             "pending_notifications": len(container.repos.notifications.due(now().isoformat())),
             "latest_decision": container.repos.decisions.recent(limit=1),
             "last_check": container.repos.checks.latest(),

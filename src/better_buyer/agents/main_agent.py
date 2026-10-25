@@ -87,7 +87,7 @@ class MainAgent:
         return (
             "你好，我是你的购买助手。想订什么？直接告诉我品类、出发地、目的地和时间，预算与偏好可选。\n"
             f"{CATEGORY_TIPS}\n"
-            "信息齐全后我会先和你确认，再启动后台盯盘；盯盘期间可以随时闲聊，也可以让我停止。"
+            "信息齐全后我会自动启动后台盯盘；盯盘期间可以随时闲聊，也可以让我停止。"
         )
 
     def create_session(self, user_id: str) -> ChatSession:
@@ -217,16 +217,16 @@ class MainAgent:
         session.last_decision = None
         session.order_id = None
 
-        reply = "\n".join(
+        # 条件齐全即自动启动后台盯盘，交互界面继续可用于闲聊与决策
+        payload = await self._flow_start_watch(session, result)
+        payload["reply"] = "\n".join(
             [
                 result.reply or f"已确认：{booking.title}。",
+                "条件已齐全，已自动启动后台盯盘；可以继续闲聊，或直接选择下面的操作。",
                 "",
-                "确认无误就启动后台盯盘；需要改条件也可以直接说。",
-                "",
-                READY_MENU,
+                payload["reply"],
             ]
         )
-        payload = self._payload(session, result, reply=reply)
         payload["booking_id"] = booking.id
         return payload
 

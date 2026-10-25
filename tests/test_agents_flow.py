@@ -19,16 +19,19 @@ def test_chat_flow_end_to_end(container, settings):
     assert "想订什么" in container.main.greeting()
 
     first = _handle(container, session.id, "11月8号北京飞上海，预算2000")
-    assert first["state"] == "Ready"
+    # 条件齐全后无需确认，直接启动后台盯盘
+    assert first["state"] == "Watching"
     assert first["booking_id"]
-    assert "启动后台盯盘" in first["reply"]
-
-    started = _handle(container, session.id, "1")
-    assert started["state"] == "Watching"
-    assert started["offers"]
-    paid = [offer["paid_price"] for offer in started["offers"]]
+    assert "自动启动后台盯盘" in first["reply"]
+    assert first["offers"]
+    paid = [offer["paid_price"] for offer in first["offers"]]
     assert paid == sorted(paid)
-    assert started["decision"]["recommendation"] in ("buy_now", "watch", "no_buy", "no_go")
+    assert first["decision"]["recommendation"] in ("buy_now", "watch", "no_buy", "no_go")
+
+    # 盯盘期间可以闲聊，状态保持 Watching
+    chat = _handle(container, session.id, "今天天气不错啊")
+    assert chat["state"] == "Watching"
+    assert chat["action"] == "chat"
 
     confirm = _handle(container, session.id, "确认购买")
     assert confirm["state"] == "SelectingOffer"
@@ -71,10 +74,7 @@ def test_clarifying_question_and_exit(container):
     assert "depart_date" in ask["missing"]
 
     full = _handle(container, session.id, "11月8号")
-    assert full["state"] == "Ready"
-
-    started = _handle(container, session.id, "1")
-    assert started["state"] == "Watching"
+    assert full["state"] == "Watching"
 
     bye = _handle(container, session.id, "退出")
     assert bye["state"] == "Exited"

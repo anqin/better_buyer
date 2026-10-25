@@ -49,11 +49,9 @@ uv run better-buyer chat
 
 ```text
 11月8号北京飞上海，预算2000
-  # 助手确认条件，并展示「是否后台执行」菜单
+  # 条件齐全，助手自动启动后台盯盘（Ready → Watching）
 今天天气不错啊
-  # 闲聊不会打断流程，状态保持 Ready
-1
-  # 启动后台盯盘（Ready → Watching）
+  # 闲聊不会打断流程，状态保持 Watching
 3
   # 查看各平台优惠券
 2
@@ -221,10 +219,10 @@ uv run better-buyer init
 
 1. **启动即主界面**：`chat` / PWA 打开后先寒暄并询问需求（支持闲聊，不会误触发下单）
 2. **槽位抽取**：从中文里识别品类、城市、日期（`11月8号/明天/这周五`）、预算、舱位、数量
-3. **缺口追问**：只问缺的字段，信息齐全后进入 `Ready`，并展示「是否后台执行」菜单（`1` 启动 / `2` 修改 / `3` 取消）
-4. **用户确认后启动**：回复 `1` 才采集 → 预测 → 选券 → 创建盯盘任务（`Watching`）；决策权始终在用户手里
-5. **后台盯盘**：按 `collection.price_interval_minutes` 周期采集与预测；推荐结果变化才推送，避免重复打扰
-6. **盯盘决策**：`1` 现在购买 / `2` 继续观望 / `3` 查看各平台优惠券 / `4` 停止盯盘；盯盘期间可随时闲聊，状态不变
+3. **缺口追问**：只问缺的字段；信息齐全后直接采集 → 预测 → 选券 → 创建盯盘任务（`Ready → Watching`），无需再手动确认
+4. **后台盯盘**：按 `collection.price_interval_minutes` 周期采集与预测；推荐结果变化才推送，避免重复打扰
+5. **交互与闲聊**：盯盘期间主交互仍然可用，可围绕本次购买闲聊，也可继续修改条件或做出决策
+6. **盯盘决策**：`1` 现在购买 / `2` 继续观望 / `3` 查看各平台优惠券 / `4` 停止盯盘；闲聊时状态不变
 7. **确认购买**：实时刷新报价，按「标价 − 最优券」的**实付价升序**展示，默认推荐最低平台
 8. **选择平台**：生成带幂等键的草稿订单与平台深链，进入 `Purchasing`
 9. **凭据授权**：首次在该平台下单时分两步提示——先账号、再密码/令牌（回复“跳过”只存脱敏别名，回复“取消”退出）；也兼容一句「账号 … 密码 …」。密码走 AES-256-GCM 加密入库，Markdown 只留脱敏别名
@@ -258,8 +256,10 @@ uv run better-buyer init
 | `export` | 导出 Markdown 台账 | `uv run better-buyer export` |
 | `calibrate` | 回测并更新模型可靠性 | `uv run better-buyer calibrate --horizon 3` |
 | `serve` | 启动 API + PWA | `uv run better-buyer serve --port 8000` |
-| `status` | 运行状态 | `uv run better-buyer status` |
+| `status` | 运行状态，含后台盯盘任务数与内置命令数 | `uv run better-buyer status` |
 | `health` | 适配器/模型健康 | `uv run better-buyer health` |
+
+`status` 的 JSON 中可直接查看 `watch_task_count`（当前运行中的后台盯盘任务数）与 `builtin_command_count`（内置 CLI 命令数），并附带 `builtin_commands` 全量命令名。
 
 茅台示例：
 
