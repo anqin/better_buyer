@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+logs/
+
+# 运行时数据（SQLite、备份、凭据保险箱、通知快照）
+data/
+vault/
+notifications/
+
+# 记忆与导出 Markdown（运行时生成，含脱敏账号别名）
+memory/
+
+# 平台登录信息（绝不入库）
+platform_credentials.md
