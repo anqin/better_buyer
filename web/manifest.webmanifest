@@ -1,0 +1,20 @@
+{
+  "name": "Better Buyer 盯盘助手",
+  "short_name": "BetterBuyer",
+  "description": "机票/酒店/茅台优惠券盯盘与半自动购买",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7f9",
+  "theme_color": "#0f766e",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

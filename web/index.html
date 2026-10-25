@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="description" content="Better Buyer：机票/酒店/茅台优惠券盯盘与半自动购买" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/styles.css" />
+  <title>Better Buyer</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="/icon.svg" alt="" width="28" height="28" />
+      <div>
+        <strong>Better Buyer</strong>
+        <span class="subtitle">全网最低价 · 盯盘助手</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="state-chip" class="chip">未连接</span>
+      <button id="settings-btn" class="icon-btn" aria-label="设置">⚙</button>
+    </div>
+  </header>
+
+  <main id="messages" class="messages" aria-live="polite">
+    <div class="empty" id="empty-state">
+      <h2>想买什么？</h2>
+      <p>机票、酒店、茅台都可以。试着说：<br />“11月8号北京飞上海，预算2000”。</p>
+    </div>
+  </main>
+
+  <div class="quick-actions" id="quick-actions">
+    <button data-quick="明天北京飞上海，预算2000">北京→上海机票</button>
+    <button data-quick="这周五上海酒店，住2晚，预算600">上海酒店</button>
+    <button data-quick="飞天茅台2瓶，预算3200">飞天茅台</button>
+  </div>
+
+  <form id="composer" class="composer">
+    <textarea id="input" rows="1" placeholder="告诉我你的需求…" autocomplete="off"></textarea>
+    <button id="send-btn" type="submit">发送</button>
+  </form>
+
+  <dialog id="settings-dialog" class="settings-dialog">
+    <form method="dialog" class="dialog-body">
+      <h3>连接与授权</h3>
+      <p class="hint">手机端只保存登录令牌与交互状态；采集、预测与下单深链都在云端完成。</p>
+      <label>设备 ID<input id="device-id" readonly /></label>
+      <label>显示名称<input id="display-name" value="手机用户" /></label>
+      <div class="dialog-row">
+        <button type="button" id="register-btn" class="secondary">重新注册</button>
+        <button type="button" id="notify-btn" class="secondary">开启通知</button>
+      </div>
+      <hr />
+      <p class="hint">已有云端账号？在云端执行 <code>better-buyer pair</code> 获取 6 位配对码。</p>
+      <label>配对码<input id="pairing-code" inputmode="numeric" maxlength="6" placeholder="6 位数字" /></label>
+      <div class="dialog-row">
+        <button type="button" id="pair-btn" class="primary">配对我的云端账号</button>
+        <button value="close" class="secondary">关闭</button>
+      </div>
+      <p id="settings-status" class="status-text"></p>
+    </form>
+  </dialog>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

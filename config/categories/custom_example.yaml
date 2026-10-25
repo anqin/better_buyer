@@ -1,0 +1,9 @@
+key: custom_example
+name: 示例品类
+strategy: better_buyer.categories.custom_example:CustomExampleCategory
+enabled: false
+coupon_scope: 自定义
+slots:
+  required: [item_id]
+  optional: [quantity, budget]
+models: {}

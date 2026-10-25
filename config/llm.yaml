@@ -1,0 +1,96 @@
+# 多模型配置：provider / 多 API Key / 角色 / 权重 / 预算
+enabled: true
+timeout_seconds: 20
+max_parallel: 4
+cache_ttl_minutes: 10
+
+roles:
+  nlu:
+    providers: [deepseek-chat]
+  predictor:
+    providers: [openai-a, openai-b, deepseek-chat]
+    min_participants: 2             # 低于该值告警并标记 low_diversity
+  judge:
+    providers: [judge-gpt]
+    on_disagreement_only: true
+    disagreement_threshold: 0.25
+
+providers:
+  - id: openai-a
+    family: openai
+    enabled: true
+    base_url: https://api.openai.com/v1
+    model: gpt-4o-mini
+    api_key_env: OPENAI_API_KEY_1
+    weight: 1.0
+    max_rpm: 60
+    cost_tier: 1
+    temperature: 0.2
+    roles: [predictor]
+    categories: [flight, hotel, moutai]   # 可选；缺省=全部品类
+
+  - id: openai-b                    # 同一 family 的第二个 Key，独立配额与熔断
+    family: openai
+    enabled: true
+    base_url: https://api.openai.com/v1
+    model: gpt-4o-mini
+    api_key_env: OPENAI_API_KEY_2
+    weight: 1.0
+    max_rpm: 60
+    cost_tier: 1
+    temperature: 0.2
+    roles: [predictor]
+    categories: [flight, hotel]          # 可选排除：该实例不参与 moutai
+
+  - id: deepseek-chat
+    family: deepseek
+    enabled: true
+    base_url: https://api.deepseek.com/v1
+    model: deepseek-chat
+    api_key_env: DEEPSEEK_API_KEY
+    weight: 1.2
+    max_rpm: 120
+    cost_tier: 0
+    temperature: 0.3
+    roles: [nlu, predictor]
+    categories: [flight, hotel, moutai]
+
+  - id: judge-gpt
+    family: openai
+    enabled: true
+    base_url: https://api.openai.com/v1
+    model: gpt-4o
+    api_key_env: OPENAI_JUDGE_API_KEY
+    weight: 1.0
+    max_rpm: 20
+    cost_tier: 2
+    temperature: 0
+    roles: [judge]
+    categories: [flight, hotel, moutai]
+
+budget:
+  daily_token_limit: 200000
+  max_calls_per_decision: 4
+  overspend_policy: trim_high_cost # 超预算时按 cost_tier 从高到低裁剪
+
+scoring:
+  model:
+    direction: 0.30
+    plausibility: 0.20
+    confidence: 0.20
+    reliability: 0.20
+    evidence: 0.05
+    cost: 0.05
+  final:
+    local: 0.50
+    models: 0.40
+    judge: 0.10
+  thresholds:
+    buy_now: 0.60
+    judge_escalation: 0.25
+
+category_overrides:
+  moutai:
+    thresholds:
+      buy_now: 0.68
+    exclude: []                 # 可选：显式排除的 predictor，缺省不排除

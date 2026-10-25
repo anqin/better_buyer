@@ -1,0 +1,90 @@
+# 主配置：品类、默认阈值、调度与导出
+default_category: flight
+timezone: Asia/Shanghai
+categories_dir: config/categories        # 每个品类一份 yaml，与下列配置按 key 合并
+
+categories:
+  - key: flight
+    name: 机票
+    strategy: better_buyer.categories.flight:FlightCategory
+    enabled: true
+    coupon_scope: 机票
+    slots:
+      required: [origin, destination, depart_date]
+      optional: [depart_time_pref, cabin, budget]
+    ranking:
+      primary: paid_price
+      asc: true
+    buy_score_threshold: 0.60
+    prediction:
+      urgency_days: 3
+      min_saving_margin: 0.03
+    models: {}                  # 可选：{exclude: [...]}；缺省全部 predictor 参与
+
+  - key: hotel
+    name: 酒店
+    strategy: better_buyer.categories.hotel:HotelCategory
+    enabled: true
+    coupon_scope: 酒店
+    slots:
+      required: [city, checkin_date, checkout_date]
+      optional: [star_level, room_type, guests, budget]
+    ranking:
+      primary: nightly_paid_price
+      asc: true
+    buy_score_threshold: 0.62
+    prediction:
+      urgency_days: 1
+      min_saving_margin: 0.05
+    models: {}
+
+  - key: moutai
+    name: 茅台
+    strategy: better_buyer.categories.moutai:MoutaiCategory
+    enabled: true
+    coupon_scope: 白酒
+    slots:
+      required: [sku]
+      optional: [quantity, spec, target_unit_price, channels]
+    ranking:
+      primary: unit_paid_price
+      asc: true
+      require_in_stock: true
+    buy_score_threshold: 0.68
+    prediction:
+      urgency_days: 2
+      min_saving_margin: 0.0
+    models: {}
+
+  - key: custom_example
+    name: 示例品类
+    strategy: better_buyer.categories.custom_example:CustomExampleCategory
+    enabled: false
+    coupon_scope: 自定义
+    slots:
+      required: [item_id]
+      optional: [quantity, budget]
+    models: {}
+
+defaults:
+  min_saving_margin: 0.03
+  confidence_threshold: 0.55
+  decision_score_threshold: 0.60
+  history_window_days: 30
+  notifications:
+    decision_remind: true
+    departure_remind: true
+
+cities: [北京, 上海, 广州, 深圳, 成都, 杭州, 西安, 重庆, 南京, 武汉, 长沙, 厦门, 青岛, 天津, 昆明, 三亚, 海口, 香港]
+
+collection:
+  coupons_cron: "0 8,20 * * *"
+  price_interval_minutes: 30
+  price_stale_hours: 6
+
+check:
+  cron: "0 1 * * *"
+  price_outlier_ratio: 0.4
+
+export:
+  decisions_md: true

@@ -1,0 +1,58 @@
+# 平台与采集策略：playwright | adapter | mock
+# 开发/离线演示可用 CLI 的 --mock 覆盖本配置。
+mode: playwright
+
+platforms:
+  - key: ctrip
+    name: 携程
+    enabled: true
+    provider: playwright
+    categories: [flight, hotel]
+  - key: fliggy
+    name: 飞猪
+    enabled: true
+    provider: playwright
+    categories: [flight, hotel]
+  - key: taobao
+    name: 淘宝
+    enabled: true
+    provider: playwright
+    categories: [flight, hotel, moutai]
+  - key: jd
+    name: 京东
+    enabled: true
+    provider: playwright
+    categories: [flight, hotel, moutai]
+  - key: douyin
+    name: 抖音商城
+    enabled: true
+    provider: playwright
+    categories: [flight, hotel, moutai]
+
+# 可选：按 (品类, 平台) 覆盖 provider；未声明时回落到平台的 provider
+category_adapters:
+  moutai:
+    taobao: playwright
+    jd: playwright
+  hotel:
+    ctrip: playwright
+  custom_example:
+    taobao: mock
+
+playwright:
+  headless: true
+  max_concurrency: 2
+  request_jitter_seconds: [2, 8]
+  page_timeout_seconds: 25
+  captcha_policy: report_and_skip
+  profile_dir: vault/browser
+
+official_api:
+  ctrip:
+    base_url: ""
+    api_key_env: CTRIP_API_KEY
+
+aggregator:
+  enabled: false
+  base_url: ""
+  api_key_env: AGGREGATOR_API_KEY

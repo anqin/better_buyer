@@ -1,0 +1,17 @@
+key: moutai
+name: 茅台
+strategy: better_buyer.categories.moutai:MoutaiCategory
+enabled: true
+coupon_scope: 白酒
+slots:
+  required: [sku]
+  optional: [quantity, spec, target_unit_price, channels]
+ranking:
+  primary: unit_paid_price
+  asc: true
+  require_in_stock: true
+buy_score_threshold: 0.68
+prediction:
+  urgency_days: 2
+  min_saving_margin: 0.0
+models: {}

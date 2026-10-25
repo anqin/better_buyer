@@ -1,0 +1,16 @@
+key: flight
+name: 机票
+strategy: better_buyer.categories.flight:FlightCategory
+enabled: true
+coupon_scope: 机票
+slots:
+  required: [origin, destination, depart_date]
+  optional: [depart_time_pref, cabin, budget]
+ranking:
+  primary: paid_price
+  asc: true
+buy_score_threshold: 0.60
+prediction:
+  urgency_days: 3
+  min_saving_margin: 0.03
+models: {}

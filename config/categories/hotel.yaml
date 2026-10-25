@@ -1,0 +1,16 @@
+key: hotel
+name: 酒店
+strategy: better_buyer.categories.hotel:HotelCategory
+enabled: true
+coupon_scope: 酒店
+slots:
+  required: [city, checkin_date, checkout_date]
+  optional: [star_level, room_type, guests, budget]
+ranking:
+  primary: nightly_paid_price
+  asc: true
+buy_score_threshold: 0.62
+prediction:
+  urgency_days: 1
+  min_saving_margin: 0.05
+models: {}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Better Buyer">
+  <rect width="128" height="128" rx="28" fill="#0f766e"/>
+  <path d="M32 84 L52 58 L70 74 L96 42" fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="96" cy="42" r="9" fill="#fbbf24"/>
+  <circle cx="32" cy="84" r="7" fill="#ffffff" opacity="0.85"/>
+</svg>
