@@ -394,7 +394,17 @@ uv run better-buyer check   # 数据质检
 
 ---
 
-## 11. 常见问题
+## 11. 运行截图
+
+![](screenshot/screenshot_1.png)
+
+![](screenshot/screenshot_2.png)
+
+![](screenshot/screenshot_3.png)
+
+---
+
+## 12. 常见问题
 
 | 现象 | 处理 |
 |---|---|
@@ -408,6 +418,6 @@ uv run better-buyer check   # 数据质检
 
 ---
 
-## 12. 免责声明
+## 13. 免责声明
 
 本项目用于个人比价与提醒，不绕过平台风控、验证码与实名/支付授权。请遵守各平台用户协议，最终价格与库存以平台页面为准。
