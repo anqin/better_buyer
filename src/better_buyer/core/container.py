@@ -54,7 +54,20 @@ class AppContainer:
             settings, self.registry, self.adapters, self.repos, self.memory, self.exporter
         )
         self.predictor_agent = PredictorAgent(self.repos, self.predictor)
-        self.interaction = InteractionAgent(settings, self.registry, self.router)
+        self.event_bus = EventBus()
+        self.notifier.event_bus = self.event_bus
+        self.watcher = WatchAgent(
+            settings,
+            self.registry,
+            self.repos,
+            self.collector,
+            self.predictor_agent,
+            self.notifier,
+            self.event_bus,
+        )
+        self.interaction = InteractionAgent(
+            settings, self.registry, self.router, watcher=self.watcher
+        )
         self.vault = CredentialVault(settings.master_key)
         self.purchase = PurchaseAgent(
             settings,
@@ -66,17 +79,6 @@ class AppContainer:
             self.memory,
             self.notifier,
             self.vault,
-        )
-        self.event_bus = EventBus()
-        self.notifier.event_bus = self.event_bus
-        self.watcher = WatchAgent(
-            settings,
-            self.registry,
-            self.repos,
-            self.collector,
-            self.predictor_agent,
-            self.notifier,
-            self.event_bus,
         )
         self.main = MainAgent(
             settings,

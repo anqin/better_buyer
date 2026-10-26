@@ -357,6 +357,43 @@ class ModelRouter:
             self._record_failure(provider, self.states[provider.id], str(exc))
         return None
 
+    async def classify_intent(self, text: str, labels: dict[str, str]) -> dict[str, float] | None:
+        """实时意图预测：返回各候选品类 {key: 0~1 置信度}，无 NLU 可用时返回 None。"""
+        if not self.enabled:
+            return None
+        provider = None
+        for candidate in self.providers:
+            if "nlu" in candidate.roles and candidate.enabled and candidate.key_configured:
+                provider = candidate
+                break
+        if provider is None:
+            return None
+        candidates = "、".join(f"{key}({label})" for key, label in labels.items())
+        prompt = (
+            "判断用户话语最可能落在哪个购物品类上，只输出 JSON："
+            f'{{"{labels} 各键": 0~1 置信度}}\n'
+            f"候选品类：{candidates}\n"
+            f"用户输入：{text}"
+        )
+        messages = [
+            {"role": "system", "content": "你是严谨的意图分类器，只输出 JSON。"},
+            {"role": "user", "content": prompt},
+        ]
+        try:
+            raw = await asyncio.wait_for(
+                asyncio.to_thread(self.transport, provider, messages), timeout=self.timeout_seconds
+            )
+            data = _extract_json(raw)
+            if isinstance(data, dict):
+                return {
+                    key: max(0.0, min(1.0, float(value)))
+                    for key, value in data.items()
+                    if key in labels
+                }
+        except Exception as exc:
+            self._record_failure(provider, self.states[provider.id], str(exc))
+        return None
+
     # ------------------------------------------------------------------
     # 健康
     # ------------------------------------------------------------------

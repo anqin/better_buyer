@@ -502,7 +502,15 @@ class ChatSession:
     last_decision: Decision | None = None
     offers: list[Offer] = field(default_factory=list)
     order_id: str | None = None
-    credential_step: str = ""          # "" | account | secret
+    # 实时意图预测（本地规则 + 可选 LLM 增强）
+    intent_category: str | None = None   # 已确认的品类（提交进收集环节后不再为空）
+    intent_confidence: float = 0.0       # 当前已确认品类的最新置信度 0~1
+    intent_scores: dict[str, float] = field(default_factory=dict)  # 各品类最新置信度
+    proposed_category: str | None = None # 引导话术向用户提案的品类（待确认）
+    pending_confirm: bool = False        # 是否在等待用户确认"继续上一个意图"
+    pending_watch_start: bool = False    # 数据不足时是否在等待用户确认是否仍要盯盘
+    pending_cancel_task: str | None = None  # 待用户二次确认删除的盯盘任务 id
+    credential_step: str = ""            # "" | account | secret
     credential_account: str = ""
     credential_platform: str = ""
     history: list[dict[str, str]] = field(default_factory=list)
@@ -518,6 +526,13 @@ class ChatSession:
             "last_decision": self.last_decision.to_dict() if self.last_decision else None,
             "offers": [o.to_dict() for o in self.offers],
             "order_id": self.order_id,
+            "intent_category": self.intent_category,
+            "intent_confidence": self.intent_confidence,
+            "intent_scores": dict(self.intent_scores),
+            "proposed_category": self.proposed_category,
+            "pending_confirm": self.pending_confirm,
+            "pending_watch_start": self.pending_watch_start,
+            "pending_cancel_task": self.pending_cancel_task,
             "credential_step": self.credential_step,
             "credential_platform": self.credential_platform,
             "history": list(self.history),

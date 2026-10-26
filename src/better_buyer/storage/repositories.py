@@ -217,6 +217,9 @@ class WatchRepo:
             "SELECT * FROM watch_tasks WHERE booking_id=? AND status='running'", [booking_id]
         )
 
+    def get(self, task_id: str) -> dict[str, Any] | None:
+        return self.db.query_one("SELECT * FROM watch_tasks WHERE id=?", [task_id])
+
     def list_running(self) -> list[dict[str, Any]]:
         return self.db.query("SELECT * FROM watch_tasks WHERE status='running'")
 

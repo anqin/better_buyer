@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS watch_tasks (
     next_run_at TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'running',
     last_decision TEXT NOT NULL DEFAULT '',
+    await_response_until TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_watch_next ON watch_tasks(status, next_run_at);
@@ -309,11 +310,24 @@ class Database:
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.executescript(SCHEMA)
         self._conn.commit()
+        self._migrate()
 
     # ------------------------------------------------------------------
     @property
     def connection(self) -> sqlite3.Connection:
         return self._conn
+
+    def _migrate(self) -> None:
+        """幂等迁移：老库缺列时补列（CREATE TABLE IF NOT EXISTS 不会新增列）。"""
+        with self._lock:
+            cols = {
+                row["name"] for row in self.query("PRAGMA table_info(watch_tasks)")
+            }
+            if cols and "await_response_until" not in cols:
+                self.execute(
+                    "ALTER TABLE watch_tasks "
+                    "ADD COLUMN await_response_until TEXT NOT NULL DEFAULT ''"
+                )
 
     def execute(self, sql: str, params: Sequence[Any] = ()) -> int:
         with self._lock:

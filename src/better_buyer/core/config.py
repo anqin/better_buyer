@@ -171,6 +171,30 @@ class Settings:
         )
 
     @property
+    def watch_decision_countdown_seconds(self) -> int:
+        """向用户发出建议后，未响应自动继续盯盘的倒计时（秒）。"""
+        return int(
+            os.environ.get(
+                "BB_WATCH_DECISION_COUNTDOWN_SECONDS",
+                self.collection.get("decision_countdown_seconds", 15),
+            )
+        )
+
+    @property
+    def intent_threshold(self) -> float:
+        """实时意图预测进入收集环节的置信度阈值（0~1）。"""
+        return float(
+            os.environ.get("BB_INTENT_THRESHOLD", self.collection.get("intent_threshold", 0.80))
+        )
+
+    @property
+    def intent_decay_threshold(self) -> float:
+        """已确认意图置信度衰退到该值以下且出现其它品类信号时，才询问是否换个方向。"""
+        return float(
+            os.environ.get("BB_INTENT_DECAY_THRESHOLD", self.collection.get("intent_decay_threshold", 0.45))
+        )
+
+    @property
     def watch_window_days(self) -> int:
         return int(os.environ.get("BB_WATCH_WINDOW_DAYS", "7"))
 

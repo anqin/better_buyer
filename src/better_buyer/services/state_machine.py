@@ -36,6 +36,7 @@ TRANSITIONS: dict[SessionState, set[SessionState]] = {
         SessionState.SELECTING_OFFER,
         SessionState.READY,
         SessionState.COMPLETED,
+        SessionState.COLLECTING,
         SessionState.EXITED,
     },
     SessionState.DECIDING: {

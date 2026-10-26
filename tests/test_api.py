@@ -36,16 +36,30 @@ def test_api_health_auth_chat_and_pairing(container):
     )
     assert reply.status_code == 200
     payload = reply.json()
-    # 条件齐全后直接启动后台盯盘
-    assert payload["state"] == "Watching"
+    # 条件齐全后先进入确认菜单，再回复「1」启动后台盯盘
+    assert payload["state"] == "Ready"
     assert payload["booking_id"]
-    assert payload["offers"]
+
+    start = client.post(
+        f"/api/chat/sessions/{session_id}/messages", headers=headers, json={"text": "1"}
+    )
+    assert start.status_code == 200
+    sp = start.json()
+    # 数据不足时先询问是否继续盯盘，确认后再进入 Watching
+    if "数据不足" in (sp.get("reply") or ""):
+        sp = client.post(
+            f"/api/chat/sessions/{session_id}/messages", headers=headers, json={"text": "1"}
+        ).json()
+    assert sp["state"] == "Watching"
+    assert sp["booking_id"]
+    assert sp["offers"]
+    booking_id = sp["booking_id"]
 
     bookings = client.get("/api/bookings", headers=headers)
     assert bookings.status_code == 200
-    assert any(item["id"] == payload["booking_id"] for item in bookings.json()["bookings"])
+    assert any(item["id"] == booking_id for item in bookings.json()["bookings"])
 
-    detail = client.get(f"/api/bookings/{payload['booking_id']}", headers=headers)
+    detail = client.get(f"/api/bookings/{booking_id}", headers=headers)
     assert detail.status_code == 200
     assert detail.json()["booking"]["category"] == "flight"
 

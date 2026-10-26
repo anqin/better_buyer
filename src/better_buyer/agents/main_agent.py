@@ -87,7 +87,7 @@ class MainAgent:
         return (
             "你好，我是你的购买助手。想订什么？直接告诉我品类、出发地、目的地和时间，预算与偏好可选。\n"
             f"{CATEGORY_TIPS}\n"
-            "信息齐全后我会自动启动后台盯盘；盯盘期间可以随时闲聊，也可以让我停止。"
+            "信息齐全后我会询问你是否启动后台盯盘；盯盘期间可以随时闲聊，也可以让我停止。"
         )
 
     def create_session(self, user_id: str) -> ChatSession:
@@ -136,6 +136,28 @@ class MainAgent:
                 payload["order"] = credential_reply.get("order")
                 return payload
 
+        if session.pending_watch_start:
+            choice = self._no_go_confirm_choice(text)
+            if choice == "yes":
+                session.pending_watch_start = False
+                return await self._flow_start_watch(session, force=True)
+            if choice == "no":
+                session.pending_watch_start = False
+                if can_transition(session.state, SessionState.READY):
+                    transition(session, SessionState.READY)
+                return self._payload(
+                    session,
+                    None,
+                    reply="好的，暂不启动盯盘，条件已保留；需要时可以回复「1」再次尝试启动。\n\n" + READY_MENU,
+                )
+            booking = self._current_booking(session)
+            decision = session.last_decision
+            if booking is not None and decision is not None:
+                return self._payload(
+                    session, None, reply=self._no_go_confirm_reply(decision, booking)
+                )
+            session.pending_watch_start = False
+
         if session.state == SessionState.WATCHING.value:
             choice = self._watch_choice(text)
             if choice:
@@ -149,7 +171,12 @@ class MainAgent:
         if session.state == SessionState.SELECTING_OFFER.value and any(word in text for word in CANCEL_WORDS):
             return self._flow_back_to_watch(session, "已取消选择平台，回到盯盘。")
 
+        old_intent = session.intent_category
         result = await self.interaction.handle(text, session)
+        # 意图重预测：盯盘/待确认等状态下转去收集新品类 → 回到收集环节
+        if session.intent_category and session.intent_category != old_intent:
+            if can_transition(session.state, SessionState.COLLECTING):
+                transition(session, SessionState.COLLECTING)
         self._apply_result(session, result)
         payload = await self._dispatch(session, result)
         self.repos.chat.add(session.id, "assistant", payload["reply"])
@@ -217,21 +244,22 @@ class MainAgent:
         session.last_decision = None
         session.order_id = None
 
-        # 条件齐全即自动启动后台盯盘，交互界面继续可用于闲聊与决策
-        payload = await self._flow_start_watch(session, result)
+        # 条件齐全后停留在 READY，询问用户是否启动后台盯盘
+        payload = self._payload(session, result)
         payload["reply"] = "\n".join(
             [
                 result.reply or f"已确认：{booking.title}。",
-                "条件已齐全，已自动启动后台盯盘；可以继续闲聊，或直接选择下面的操作。",
+                "条件已齐全",
                 "",
-                payload["reply"],
+                READY_MENU,
             ]
         )
         payload["booking_id"] = booking.id
         return payload
 
     async def _flow_start_watch(
-        self, session: ChatSession, result: InteractionResult | None = None
+        self, session: ChatSession, result: InteractionResult | None = None,
+        force: bool = False,
     ) -> dict[str, Any]:
         booking = self._current_booking(session)
         intent = session.intent or (self.predictor.intent_from_booking(booking) if booking else None)
@@ -243,10 +271,19 @@ class MainAgent:
         collection = self.collector.collect(intent)
         decision = await self.predictor.run(booking, intent)
         session.last_decision = decision
+
+        # 数据不足：不自动启动盯盘，先征求用户确认（让用户判断是外部数据原因还是程序问题）
+        if decision.recommendation == "no_go" and not force:
+            session.pending_watch_start = True
+            return self._payload(session, result, reply=self._no_go_confirm_reply(decision, booking))
+
+        # 正常/已确认后启动盯盘
         offers = self.purchase.prepare_offers(booking, intent, refresh=False)
         session.offers = offers
-        self.watcher.start(booking)
+        task_id = self.watcher.start(booking)
+        self.repos.watches.update(task_id, last_decision=decision.recommendation)
         self.repos.bookings.update(booking.id, status="watching")
+        self.watcher.mark_awaiting_decision(booking.id)
 
         parts = [
             self._decision_line(decision, offers),
@@ -260,6 +297,21 @@ class MainAgent:
         payload["collection"] = collection
         payload["booking_id"] = booking.id
         return payload
+
+    @staticmethod
+    def _no_go_confirm_reply(decision: Any, booking: Booking) -> str:
+        reasons = list(decision.guardrail_reasons or []) + list(decision.reasons or [])
+        reason_text = "；".join(reasons[:4]) if reasons else "外部报价或预测数据暂不可用"
+        return "\n".join(
+            [
+                f"关于「{booking.title}」：当前数据不足，暂时无法给出可靠的价格建议。",
+                f"原因：{reason_text}",
+                "（这是外部报价/数据原因，不是程序故障；通常在数据可用后会恢复。）",
+                "如果选择继续盯盘，我会在数据可用并出现合适买点时再提醒你。",
+                "=== 是否继续盯盘 ===",
+                "[1] 继续盯盘  [2] 暂不盯盘",
+            ]
+        )
 
     def _flow_confirm(self, session: ChatSession, result: InteractionResult) -> dict[str, Any]:
         booking = self._current_booking(session)
@@ -527,19 +579,36 @@ class MainAgent:
             return "cancel"
         return None
 
+    @staticmethod
+    def _no_go_confirm_choice(text: str) -> str | None:
+        """数据不足启动盯盘前的确认：yes=继续盯盘，no=暂不盯盘，None=未识别。"""
+        raw = text.strip()
+        if raw in ("1", "１") or any(word in raw for word in ("继续盯盘", "继续", "盯盘")):
+            return "yes"
+        if raw in ("2", "２") or any(word in raw for word in ("暂不", "不盯", "取消", "算了", "不需要")):
+            return "no"
+        return None
+
     async def _watch_action(self, session: ChatSession, choice: str) -> dict[str, Any]:
+        booking = self._current_booking(session)
+        if booking is not None:
+            self.watcher.resolve_decision(booking.id)  # 用户已响应
         if choice == "buy":
             return self._flow_confirm(
                 session,
                 InteractionResult(session.category, session.intent, action="confirm"),
             )
         if choice == "wait":
+            if booking is not None:
+                self.watcher.mark_awaiting_decision(booking.id)
             return self._payload(
                 session,
                 InteractionResult(session.category, session.intent, action="watch"),
                 reply="继续盯盘中，命中合适买点我会提醒你。\n\n" + WATCH_MENU,
             )
         if choice == "coupons":
+            if booking is not None:
+                self.watcher.mark_awaiting_decision(booking.id)
             return self._payload(
                 session,
                 InteractionResult(session.category, session.intent, action="coupons"),
@@ -615,9 +684,9 @@ class MainAgent:
 
     # ------------------------------------------------------------------
     def _ensure_booking(self, session: ChatSession, intent: PurchaseIntent) -> Booking:
-        existing = self._current_booking(session)
         strategy = self.registry.get(intent.category)
         window = strategy.optimal_window(intent.slots)
+        existing = self._matching_booking(session, intent.category)
         if existing is not None:
             self.repos.bookings.update(
                 existing.id,
@@ -633,6 +702,7 @@ class MainAgent:
                 },
             )
             updated = self.repos.bookings.get(existing.id)
+            session.booking_id = existing.id
             return updated or existing
         booking = Booking(
             id=new_id("b"),
@@ -649,6 +719,26 @@ class MainAgent:
         self.repos.bookings.create(booking)
         session.booking_id = booking.id
         return booking
+
+    def _matching_booking(self, session: ChatSession, category: str) -> Booking | None:
+        """返回与目标品类一致、且未完成/未取消的既有 booking。
+
+        切换品类（如机票→酒店）时不得复用其他品类的 booking，否则会把题目/盯盘任务
+        串到旧记录上，造成任务列表品类错乱。
+        """
+        if session.booking_id:
+            booking = self.repos.bookings.get(session.booking_id)
+            if (
+                booking is not None
+                and booking.category == category
+                and booking.status not in ("completed", "cancelled")
+            ):
+                return booking
+        for booking in self.repos.bookings.list(session.user_id, limit=20):
+            if booking.category == category and booking.status not in ("completed", "cancelled"):
+                session.booking_id = booking.id
+                return booking
+        return None
 
     def _current_booking(self, session: ChatSession) -> Booking | None:
         if session.booking_id:
@@ -751,6 +841,10 @@ class MainAgent:
             "reply": reply if reply is not None else (result.reply if result else ""),
             "missing": list(result.missing) if result else [],
             "intent": session.intent.to_dict() if session.intent else None,
+            "intent_category": session.intent_category,
+            "intent_confidence": session.intent_confidence,
+            "intent_scores": dict(session.intent_scores),
+            "proposed_category": session.proposed_category,
             "booking_id": session.booking_id,
             "order_id": session.order_id,
             "decision": session.last_decision.to_dict() if session.last_decision else None,

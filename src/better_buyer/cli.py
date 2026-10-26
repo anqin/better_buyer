@@ -96,9 +96,27 @@ def _assistant(reply: str) -> None:
 
 def _status_line(payload: dict[str, Any]) -> None:
     detail = f"状态 {payload['state']}｜预约 {payload.get('booking_id') or '-'}"
+    if payload.get("intent_scores"):
+        intent_text = _intent_text(payload["intent_scores"])
+        if intent_text:
+            detail += f"｜意图 {intent_text}"
     if payload.get("order_id"):
         detail += f"｜订单 {payload['order_id']}"
     print(_style(f"· {detail}", "90"))
+
+
+def _intent_text(scores: dict[str, Any]) -> str:
+    """取 top-2 意图及其置信度，形如：机票 55%、酒店 35%。"""
+    labels = {"flight": "机票", "hotel": "酒店", "moutai": "茅台", "custom_example": "示例品类"}
+    ranked = sorted(
+        ((labels[key], int(value * 100)) for key, value in scores.items() if value > 0 and key in labels),
+        key=lambda item: item[1],
+        reverse=True,
+    )
+    if not ranked:
+        return ""
+    parts = [f"{name} {pct}%" for name, pct in ranked[:2]]
+    return "、".join(parts)
 
 
 def _watch_summary(decision: dict[str, Any]) -> str:

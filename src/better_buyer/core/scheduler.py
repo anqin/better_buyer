@@ -90,6 +90,10 @@ class Scheduler:
             tasks = asyncio.run(self.watcher.run_due())
             result["watch"] = len(tasks)
 
+        idle = self.watcher.process_idle_countdowns()
+        if idle:
+            result["watch_idle_auto"] = len(idle)
+
         current = now()
         today = current.date().isoformat()
         if current.hour >= daily_run_hour(self.settings) and self._last_check_date != today:
