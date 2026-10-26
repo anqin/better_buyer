@@ -4,9 +4,8 @@
 |---|---|
 | 文档版本 | v1.1（新增品类扩展与多模型决策） |
 | 日期 | 2026-10-25 |
-| 对应需求 | [requirements.md](./requirements.md) |
 | 运行环境 | 云端 WSL2 + Ubuntu 24.04 + uv；手机 Android 13+ / Google Chrome |
-| 文档状态 | 待评审 |
+| 文档状态 | 开发中 |
 
 ---
 
