@@ -35,6 +35,7 @@ CATEGORY_KEYWORDS = {
 
 CONFIRM_WORDS = ("确认购买", "确认下单", "确认", "就买", "买吧", "下单", "可以买", "好的买", "买了", "成交")
 EXIT_WORDS = ("退出", "结束", "再见", "晚安", "不聊了")
+EXIT_EN = ("exit", "quit")
 RECEIPT_WORDS = ("回执", "已支付", "支付完成", "付款完成", "订单号")
 
 # 已进入盯盘/待确认阶段后，只有带这些信号的话才视为修改需求
@@ -81,9 +82,23 @@ class InteractionAgent:
         if not raw:
             return InteractionResult(session.category, session.intent, reply="我在听，请告诉我你的需求。")
 
-        if any(word in raw for word in EXIT_WORDS):
+        if session.pending_exit:
+            # 正在等待退出确认：回复确认语则真正退出；回复其它内容视为反悔继续对话
+            if self._confirm_exit(raw):
+                session.pending_exit = False
+                session.pending_cancel_task = None
+                return InteractionResult(
+                    session.category, session.intent, reply="已退出本次对话，盯盘任务会保留。", action="exit"
+                )
+            session.pending_exit = False
+        elif self._looks_like_exit(raw):
+            # 首次检测到退出命令：先反问确认，避免误触
+            session.pending_exit = True
             return InteractionResult(
-                session.category, session.intent, reply="已退出本次对话，盯盘任务会保留。", action="exit"
+                session.category,
+                session.intent,
+                reply="即将退出本次对话（后台盯盘会继续运行）。确认退出请回复「确认退出」或「1」；想继续对话请说其它内容。",
+                action="chat",
             )
 
         # 取消盯盘的二次确认：先拦截，避免走进普通流程
@@ -511,6 +526,19 @@ class InteractionAgent:
     @staticmethod
     def _looks_like_change(text: str) -> bool:
         return any(word in text for word in CHANGE_HINTS) or parse_budget(text) is not None
+
+    @staticmethod
+    def _looks_like_exit(text: str) -> bool:
+        """识别退出命令：中文退出词或英文 exit/quit（不区分大小写）。"""
+        raw = (text or "").strip()
+        low = raw.lower()
+        return any(word in raw for word in EXIT_WORDS) or any(word in low for word in EXIT_EN)
+
+    @staticmethod
+    def _confirm_exit(text: str) -> bool:
+        """退出二次确认：用户回复确认语时才算数，否则视为反悔继续对话。"""
+        raw = (text or "").strip().lower()
+        return raw in ("1", "１", "exit", "quit", "确认退出", "确认", "确定", "确认的", "退出")
 
     def _detect_system_query(self, raw: str, session: ChatSession) -> str | None:
         text = (raw or "").strip()

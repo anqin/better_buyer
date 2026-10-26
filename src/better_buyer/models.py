@@ -510,6 +510,7 @@ class ChatSession:
     pending_confirm: bool = False        # 是否在等待用户确认"继续上一个意图"
     pending_watch_start: bool = False    # 数据不足时是否在等待用户确认是否仍要盯盘
     pending_cancel_task: str | None = None  # 待用户二次确认删除的盯盘任务 id
+    pending_exit: bool = False         # 是否在等待用户确认退出本次对话
     credential_step: str = ""            # "" | account | secret
     credential_account: str = ""
     credential_platform: str = ""
@@ -533,6 +534,7 @@ class ChatSession:
             "pending_confirm": self.pending_confirm,
             "pending_watch_start": self.pending_watch_start,
             "pending_cancel_task": self.pending_cancel_task,
+            "pending_exit": self.pending_exit,
             "credential_step": self.credential_step,
             "credential_platform": self.credential_platform,
             "history": list(self.history),

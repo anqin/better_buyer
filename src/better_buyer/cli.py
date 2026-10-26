@@ -494,7 +494,7 @@ def cmd_chat(args: argparse.Namespace, container: AppContainer) -> int:
     thread.start()
     print(_banner())
     _assistant(container.main.greeting())
-    print(_style("提示：输入“退出”结束本次对话；后台盯盘会持续运行。", "90"))
+    print(_style("提示：输入“退出”/“exit”结束本次对话；后台盯盘会持续运行。", "90"))
     try:
         while True:
             line = _read_line(prompt)

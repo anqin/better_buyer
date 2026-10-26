@@ -81,7 +81,9 @@ def test_clarifying_question_and_exit(container):
     assert full["state"] == "Ready"
 
     bye = _handle(container, session.id, "退出")
-    assert bye["state"] == "Exited"
+    assert "确认退出" in bye["reply"]  # 先反问确认
+    done = _handle(container, session.id, "确认退出")
+    assert done["state"] == "Exited"
 
 
 def test_system_status_queries(container):
@@ -388,3 +390,28 @@ def test_no_go_start_asks_confirmation(container, monkeypatch):
     r2 = _handle(container, session.id, "1")  # 确认继续盯盘
     assert container.watcher.count_active() == 1
     assert container.watcher.describe_active()[0]["status_label"] == "异常（数据不足）"
+
+
+def test_exit_requires_confirmation_and_accepts_english(container):
+    """需求：支持「退出」/「exit」退出对话，且先反问确认；误触可继续对话。"""
+    user = container.default_user()
+    session = container.main.create_session(user["id"])
+    _handle(container, session.id, "11月8号北京飞上海，预算2000")
+    _handle(container, session.id, "1")  # 启动盯盘
+
+    # 首次输入「退出」→ 先询问确认，未真正退出
+    ask = _handle(container, session.id, "退出")
+    assert "确认退出" in ask["reply"]
+    assert ask["state"] != "Exited"
+
+    # 反悔继续对话 → 不清除会话，仍可聊天
+    keep = _handle(container, session.id, "今天天气不错")
+    assert keep["state"] != "Exited"
+
+    # 再次输入「exit」→ 反问；确认后真正退出
+    ask2 = _handle(container, session.id, "exit")
+    assert "确认退出" in ask2["reply"]
+    done = _handle(container, session.id, "确认退出")
+    assert done["action"] == "exit"
+    assert done["state"] == "Exited"
+    assert "盯盘" in done["reply"]  # 提示后台盯盘会保留
